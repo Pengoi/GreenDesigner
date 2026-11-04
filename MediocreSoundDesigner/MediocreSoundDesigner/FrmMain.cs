@@ -6,9 +6,10 @@ namespace MediocreSoundDesigner;
 public partial class FrmMain : Form {
   // fields
   private TrackManager trackManager;
+  private const int DIVIDER_HEIGHT = 3;
 
-  // ctor
-  public FrmMain() {
+    // ctor
+    public FrmMain() {
     InitializeComponent();
     Setup();
   }
@@ -18,6 +19,7 @@ public partial class FrmMain : Form {
     private void Setup() {
     DoubleBuffered = true;
     trackManager = new(panTracks);
+    panTracks.AutoScroll = false;
     btnPlay.BackgroundImage = Resources.play;
     trackManager.DrawTimescale = trkDrawTimescale.Value;
     UpdateSizes();
@@ -25,7 +27,8 @@ public partial class FrmMain : Form {
   }
   private void ApplySettings() {
     BackColor = Settings.Color.WinBg;
-    panTracks.BackColor = Settings.Color.TrackBg_Unselected;
+    // track divider
+    panTracks.BackColor = Settings.Color.TrackDivider;
     lblPlayhead.BackColor = Settings.Color.Playline;
     trackManager.ApplySettings();
   }
@@ -232,14 +235,21 @@ public partial class FrmMain : Form {
     panTracks.Left = PADDING;
     panTracks.Width = ClientSize.Width - (PADDING * 2);
 
+    // added gap for track divider
+    int count = trackManager.Tracks.Count;
+    int trackHeight = count > 0
+        ? Math.Max(1, (panTracks.Height - DIVIDER_HEIGHT * (count - 1)) / count)   // never below 1px
+        : 0;
+
     int top = 0;
-    foreach (Track track in trackManager.Tracks) {
-      track.PanDrawSamples.Left = 0;
-      track.PanDrawSamples.Width = panTracks.Width;
-      track.PanDrawSamples.Height = (panTracks.Height / trackManager.Tracks.Count) - 1;
-      track.PanDrawSamples.Top = top;
-      track.PanDrawSamples.Invalidate();
-      top += track.PanDrawSamples.Height;
+    foreach (Track track in trackManager.Tracks)
+    {
+        track.PanDrawSamples.Left = 0;
+        track.PanDrawSamples.Width = panTracks.Width;
+        track.PanDrawSamples.Height = trackHeight;
+        track.PanDrawSamples.Top = top;
+        track.PanDrawSamples.Invalidate();
+        top += trackHeight + DIVIDER_HEIGHT;
     }
     // transport bar: play button at the top-left, timescale slider beside it
     trkDrawTimescale.Left = btnPlay.Right + PADDING;

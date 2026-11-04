@@ -17,6 +17,7 @@ public static class Settings {
     public Color TrackSamples_Disabled { get; set; }
     public Color TrackBg_Unselected { get; set; }
     public Color TrackBg_Selected { get; set; }
+    public Color TrackDivider { get; set; }
     public Color Playline { get; set; }
 
     public Colors() {
@@ -26,6 +27,7 @@ public static class Settings {
       TrackSamples_Disabled = System.Drawing.Color.LightGray;
       TrackBg_Unselected = System.Drawing.Color.DimGray;
       TrackBg_Selected = System.Drawing.Color.Gray;
+      TrackDivider = System.Drawing.Color.FromArgb(30, 30, 30);
       Playline = System.Drawing.Color.White;
     }
   }
