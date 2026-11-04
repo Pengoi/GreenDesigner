@@ -234,6 +234,7 @@ public partial class FrmMain : Form {
 
     panTracks.Left = PADDING;
     panTracks.Width = ClientSize.Width - (PADDING * 2);
+    panTracks.Height = ClientSize.Height - panTracks.Top - PADDING - (lblDebug.Visible ? lblDebug.Height : 0);
 
     // added gap for track divider
     int count = trackManager.Tracks.Count;
@@ -258,5 +259,13 @@ public partial class FrmMain : Form {
     lblPlayhead.Left = 0;
     lblPlayhead.Height = panTracks.Height;
     lblPlayhead.BringToFront();
+
+    System.Diagnostics.Debug.WriteLine(
+  $"client H={ClientSize.Height}, panTracks.Top={panTracks.Top}, panTracks.Bottom={panTracks.Bottom}");
+
+foreach (Control c in Controls) {
+  System.Diagnostics.Debug.WriteLine(
+    $"{c.Name} ({c.GetType().Name}): Top={c.Top}, Bottom={c.Bottom}, Dock={c.Dock}, Visible={c.Visible}");
+}
   }
 }
