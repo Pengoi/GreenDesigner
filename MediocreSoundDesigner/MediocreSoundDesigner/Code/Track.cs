@@ -184,22 +184,23 @@ public class Track : IDisposable {
   private void SaveToTempFile() {
     Directory.CreateDirectory(Path.GetDirectoryName(tempFilePath));
     using var writer = new WaveFileWriter(tempFilePath, fileReader?.WaveFormat ?? new());
-    writer.WriteSamples(GetAdjustedSamples(), 0, samples.Length);
+    float[] adjusted = GetAdjustedSamples();
+    writer.WriteSamples(adjusted, 0, adjusted.Length);
   }
   public void SaveToFile(string path) {
     Directory.CreateDirectory(Path.GetDirectoryName(path));
     using var writer = new WaveFileWriter(path, fileReader?.WaveFormat ?? new());
-    writer.WriteSamples(GetAdjustedSamples(), 0, samples.Length);
+    float[] adjusted = GetAdjustedSamples();
+    writer.WriteSamples(adjusted, 0, adjusted.Length);
   }
   public float[] GetAdjustedSamples() {
     float[] adjSamples = new float[samples.Length];
     for (int s = 0; s < samples.Length; s++) {
       adjSamples[s] = samples[s] * Volume;
     }
-    float[] deadSpace = new float[DrawOffset * drawTimescale];
-    for (int i = 0; i < DrawOffset; i++) {
-      deadSpace[i] = 0.0f;
-    }
+    int deadCount = DrawOffset * drawTimescale;
+    deadCount -= deadCount % Math.Max(1, channels);
+    float[] deadSpace = new float[deadCount];
 
     return [.. deadSpace, .. adjSamples];
   }
@@ -229,6 +230,11 @@ public class Track : IDisposable {
       g.DrawLines(pen, points.ToArray());
       pen.Dispose();
     }
+  }
+
+  // prevents an offset of 0 for samples of silence
+  public void SetDrawTimescale(int value) {
+    drawTimescale = value;
   }
 
   // dispose

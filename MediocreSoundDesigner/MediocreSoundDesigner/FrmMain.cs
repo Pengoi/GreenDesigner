@@ -8,6 +8,13 @@ public partial class FrmMain : Form {
   private TrackManager trackManager;
   private const int DIVIDER_HEIGHT = 3;
 
+  // drag state
+  private Track dragTrack;
+  private Point dragStart;
+  private int dragStartOffset;
+  private bool dragging;
+  private const int DRAG_THRESHOLD = 4;
+
     // ctor
     public FrmMain() {
     InitializeComponent();
@@ -228,6 +235,32 @@ public partial class FrmMain : Form {
       track.PanDrawSamples.Invalidate();
       track.PanHeader?.Invalidate();
     };
+    pan.MouseDown += (sender, e) => {
+      if (e.Button != MouseButtons.Left) return;
+      trackManager.SelectTrack(track);
+      dragTrack = track;
+      dragStart = Cursor.Position;
+      dragStartOffset = track.DrawOffset;
+      dragging = false;
+    };
+    pan.MouseMove += (sender, e) => {
+      if (dragTrack != track || e.Button != MouseButtons.Left) return;
+      Point cur = Cursor.Position;
+
+      if (!dragging) {
+        // ignore tiny wiggles so normal clicks and double-clicks still work
+        if (Math.Abs(cur.X - dragStart.X) < DRAG_THRESHOLD &&
+          Math.Abs(cur.Y - dragStart.Y) < DRAG_THRESHOLD) return;
+          dragging = true;
+          pan.Cursor = Cursors.SizeAll;
+      }
+      DragTrackTo(track, cur);
+    };
+    pan.MouseUp += (sender, e) => {
+      dragTrack = null;
+      dragging = false;
+      pan.Cursor = Cursors.Default;
+    };
     pan.Paint += (sender, e) => {
       track.DrawSamples(e.Graphics, trackManager.DrawTimescale);
     };
@@ -237,6 +270,20 @@ public partial class FrmMain : Form {
     trackManager.SelectTrack(track);
 
     return pan;
+  }
+
+  private void DragTrackTo(Track track, Point cursorScreen) {
+    int count = trackManager.Tracks.Count;
+    if (count == 0) return;
+
+    int stride = Math.Max(1, (panTracks.Height + DIVIDER_HEIGHT) / count);
+    int y = panTracks.PointToClient(cursorScreen).Y;
+    int newIndex = Math.Clamp(y / stride, 0, count - 1);
+    if (trackManager.MoveTrack(track, newIndex)) {
+      UpdateSizes();
+    }
+    track.DrawOffset = Math.Max(0, dragStartOffset + (cursorScreen.X - dragStart.X));
+    track.PanDrawSamples.Invalidate();
   }
 
   private void UpdateSizes() {
@@ -275,13 +322,5 @@ public partial class FrmMain : Form {
     lblPlayhead.Left = headerWidth;
     lblPlayhead.Height = panTracks.Height;
     lblPlayhead.BringToFront();
-
-    System.Diagnostics.Debug.WriteLine(
-  $"client H={ClientSize.Height}, panTracks.Top={panTracks.Top}, panTracks.Bottom={panTracks.Bottom}");
-
-foreach (Control c in Controls) {
-  System.Diagnostics.Debug.WriteLine(
-    $"{c.Name} ({c.GetType().Name}): Top={c.Top}, Bottom={c.Bottom}, Dock={c.Dock}, Visible={c.Visible}");
-}
   }
 }
