@@ -253,9 +253,19 @@ public partial class FrmMain : Form
 
     private void trkDrawTimescale_Scroll(object sender, EventArgs e)
     {
-        // fixes drawsamples from letting it loop forever and freezing
-        trackManager.DrawTimescale = Math.Max(1, trkDrawTimescale.Maximum - trkDrawTimescale.Value);
-        trackManager.RedrawAll();
+        int oldTimescale = trackManager.DrawTimescale;
+        int newTimescale = Math.Max(1, trkDrawTimescale.Maximum - trkDrawTimescale.Value);
+
+        if (oldTimescale != newTimescale)
+        {
+            foreach (Track track in trackManager.Tracks)
+            {
+                double samplePosition = track.DrawOffset * oldTimescale;
+                track.DrawOffset = (int)(samplePosition / newTimescale);
+            }
+            trackManager.DrawTimescale = newTimescale;
+            trackManager.RedrawAll();
+        }
     }
 
     // Helper methods
