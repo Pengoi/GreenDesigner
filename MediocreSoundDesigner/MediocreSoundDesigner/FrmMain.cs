@@ -3,324 +3,399 @@ using System.Text.Json;
 
 namespace MediocreSoundDesigner;
 
-public partial class FrmMain : Form {
-  // fields
-  private TrackManager trackManager;
-  private const int DIVIDER_HEIGHT = 3;
+public partial class FrmMain : Form
+{
+    // fields
+    private TrackManager trackManager;
+    private const int DIVIDER_HEIGHT = 3;
 
-  // drag state
-  private Track dragTrack;
-  private Point dragStart;
-  private int dragStartOffset;
-  private bool dragging;
-  private const int DRAG_THRESHOLD = 4;
+    // drag state
+    private Track dragTrack;
+    private Point dragStart;
+    private int dragStartOffset;
+    private bool dragging;
+    private const int DRAG_THRESHOLD = 4;
 
     // ctor
-    public FrmMain() {
-    InitializeComponent();
-    Setup();
-  }
+    public FrmMain()
+    {
+        InitializeComponent();
+        Setup();
+    }
 
 
     // setup
-    private void Setup() {
-    DoubleBuffered = true;
-    trackManager = new(panTracks);
-    panTracks.AutoScroll = false;
-    BuildTopBar();
-    btnPlay.BackgroundImage = Resources.play;
-    trackManager.DrawTimescale = trkDrawTimescale.Value;
-    UpdateSizes();
-    ApplySettings();
-  }
-  private void ApplySettings() {
-    BackColor = Settings.Color.WinBg;
-    // track divider
-    panTracks.BackColor = Settings.Color.TrackDivider;
-    lblPlayhead.BackColor = Settings.Color.Playline;
-    ApplyTopBarSettings();
-    trackManager.ApplySettings();
-  }
-
-  // GUI controls
-  protected override bool ProcessCmdKey(ref Message msg, Keys keyData) {
-    if (trackManager.SelectedTrack is not null) {
-      if (keyData == Keys.Left) {
-        trackManager.SelectedTrack.ShiftSampleOver(-5);
-        trackManager.SelectedTrack.PanDrawSamples.Invalidate();
-        return true;
-      }
-      else if (keyData == Keys.Right) {
-        trackManager.SelectedTrack.ShiftSampleOver(+5);
-        trackManager.SelectedTrack.PanDrawSamples.Invalidate();
-        return true;
-      }
-      else if (keyData == Keys.Delete) {
-        if (trackManager.SelectedTrack is not null) {
-          if (MessageBox.Show("This will delete the selected track. This is NOT undoable!", "Are You Sure?", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Exclamation) == DialogResult.Yes) {
-            panTracks.Controls.Remove(trackManager.SelectedTrack.PanDrawSamples);
-            trackManager.SelectedTrack.PanDrawSamples.Dispose();
-            RemoveHeader(trackManager.SelectedTrack);
-            trackManager.SelectedTrack.Dispose();
-            trackManager.RemTrack(trackManager.SelectedTrack);
-            UpdateSizes();
-            return true;
-          }
-        }
-      }
+    private void Setup()
+    {
+        DoubleBuffered = true;
+        trackManager = new(panTracks);
+        panTracks.AutoScroll = false;
+        BuildTopBar();
+        btnPlay.BackgroundImage = Resources.play;
+        trackManager.DrawTimescale = trkDrawTimescale.Value;
+        UpdateSizes();
+        ApplySettings();
     }
-    return base.ProcessCmdKey(ref msg, keyData);
-  }
-    
+    private void ApplySettings()
+    {
+        BackColor = Settings.Color.WinBg;
+        // track divider
+        panTracks.BackColor = Settings.Color.TrackDivider;
+        lblPlayhead.BackColor = Settings.Color.Playline;
+        ApplyTopBarSettings();
+        trackManager.ApplySettings();
+    }
+
+    // GUI controls
+    protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+    {
+        if (trackManager.SelectedTrack is not null)
+        {
+            if (keyData == Keys.Left)
+            {
+                trackManager.SelectedTrack.ShiftSampleOver(-5);
+                trackManager.SelectedTrack.PanDrawSamples.Invalidate();
+                return true;
+            }
+            else if (keyData == Keys.Right)
+            {
+                trackManager.SelectedTrack.ShiftSampleOver(+5);
+                trackManager.SelectedTrack.PanDrawSamples.Invalidate();
+                return true;
+            }
+            else if (keyData == Keys.Delete)
+            {
+                if (trackManager.SelectedTrack is not null)
+                {
+                    if (MessageBox.Show("This will delete the selected track. This is NOT undoable!", "Are You Sure?", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Exclamation) == DialogResult.Yes)
+                    {
+                        panTracks.Controls.Remove(trackManager.SelectedTrack.PanDrawSamples);
+                        trackManager.SelectedTrack.PanDrawSamples.Dispose();
+                        RemoveHeader(trackManager.SelectedTrack);
+                        trackManager.SelectedTrack.Dispose();
+                        trackManager.RemTrack(trackManager.SelectedTrack);
+                        UpdateSizes();
+                        return true;
+                    }
+                }
+            }
+        }
+        return base.ProcessCmdKey(ref msg, keyData);
+    }
+
     // bug change here 
     private void FrmMain_SizeChanged(object sender, EventArgs e)
     {
-        if (trackManager is null) return;  
+        if (trackManager is null) return;
         UpdateSizes();
     }
 
-    private void btnPlay_Click(object sender, EventArgs e) {
-    if (trackManager.State is NAudio.Wave.PlaybackState.Stopped or NAudio.Wave.PlaybackState.Paused) {
-      trackManager.PlayAll();
-      btnPlay.BackgroundImage = Resources.pause;
-    }
-    else {
-      trackManager.PauseAll();
-      btnPlay.BackgroundImage = Resources.play;
-    }
-  }
-
-  private void menuFileOpen_Click(object sender, EventArgs e) {
-    ofdLoadFile.DefaultExt = "wav";
-    if (ofdLoadFile.ShowDialog() == DialogResult.OK) {
-      Track newTrack = new(ofdLoadFile.FileName);
-      newTrack.Name = Path.GetFileNameWithoutExtension(ofdLoadFile.FileName);
-      CreateTrackPanel(newTrack);
-      trackManager.AddTrack(newTrack);
-      UpdateSizes();
-      newTrack.PanDrawSamples.Invalidate();
-    }
-  }
-  private void menuFileSave_Click(object sender, EventArgs e) {
-    sfdSaveFile.DefaultExt = "wav";
-    if (sfdSaveFile.ShowDialog() == DialogResult.OK) {
-      trackManager.SaveToFile(sfdSaveFile.FileName);
-    }
-  }
-  private void menuFileSettings_Click(object sender, EventArgs e) {
-    FrmEditSettings frm = new();
-    frm.SetSound(trackManager.SelectedTrack);
-    if (frm.ShowDialog() == DialogResult.OK) {
-      ApplySettings();
-    }
-  }
-
-  private void menuEditFlip_Click(object sender, EventArgs e) {
-    trackManager.SelectedTrack?.Flip();
-  }
-  private void menuEditReverse_Click(object sender, EventArgs e) {
-    trackManager.SelectedTrack?.Reverse();
-  }
-  private void menuEditVolume_Click(object sender, EventArgs e) {
-    if (trackManager.SelectedTrack is not null) {
-      FrmEditVolume frm = new();
-      frm.SetSound(trackManager.SelectedTrack);
-      frm.ShowDialog();
-    }
-  }
-  private void menuEditEliminateSilence_Click(object sender, EventArgs e) {
-    if (trackManager.SelectedTrack is not null) {
-      FrmEditEliminateSilence frm = new();
-      frm.SetSound(trackManager.SelectedTrack);
-      frm.ShowDialog();
-    }
-  }
-
-  private void menuGenRecord_Click(object sender, EventArgs e) {
-    Track newTrack = new(new float[0]);
-    newTrack.Name = "Recording";
-    CreateTrackPanel(newTrack);
-    trackManager.AddTrack(newTrack);
-    UpdateSizes();
-    newTrack.PanDrawSamples.Invalidate();
-
-    FrmGenRecord frm = new();
-    frm.SetSound(trackManager.SelectedTrack);
-    if (frm.ShowDialog() == DialogResult.Cancel) {
-      // fully remove the cancelled track including its on-screen panel
-      trackManager.RemTrack(newTrack);
-      panTracks.Controls.Remove(newTrack.PanDrawSamples);
-      newTrack.PanDrawSamples.Dispose();
-      RemoveHeader(newTrack);
-      newTrack.Dispose();
-      UpdateSizes();
-    }
-  }
-  private void menuGenNoise_Click(object sender, EventArgs e) {
-    const int NUM_SAMPLES = 100_000;
-    float[] samples = new float[NUM_SAMPLES];
-    Random rand = new();
-    for (int i = 0; i < NUM_SAMPLES; i++) {
-      samples[i] = rand.NextSingle() * 2.0f - 1.0f;
-    }
-    Track newTrack = new(samples);
-    newTrack.Name = "Noise";
-    CreateTrackPanel(newTrack);
-    trackManager.AddTrack(newTrack);
-    UpdateSizes();
-    newTrack.PanDrawSamples.Invalidate();
-  }
-  private void menuGenGradientNoise_Click(object sender, EventArgs e) {
-    const int NUM_SAMPLES = 250_000;
-    float[] samples = new float[NUM_SAMPLES];
-    Random rand = new();
-    float cur = 0;
-    float inc = 0.005f;
-    int dir = +1;
-    for (int i = 0; i < NUM_SAMPLES; i++) {
-      cur += (inc * dir);
-      if (rand.NextSingle() < 0.5f) {
-        dir *= -1;
-      }
-      if (cur > 0.9f) {
-        dir = -1;
-      }
-      if (cur < -0.9f) {
-        dir = +1;
-      }
-      samples[i] = cur;
-    }
-    Track newTrack = new(samples);
-    newTrack.Name = "Gradient Noise";
-    CreateTrackPanel(newTrack);
-    trackManager.AddTrack(newTrack);
-    UpdateSizes();
-    newTrack.PanDrawSamples.Invalidate();
-  }
-
-  private void tmrUpdatePlaybackState_Tick(object sender, EventArgs e) {
-    if (trackManager.Tracks.Count > 0) {
-      btnPlay.BackgroundImage = trackManager.State == NAudio.Wave.PlaybackState.Playing ? Resources.pause : Resources.play;
-      btnPlay.Visible = true;
-      lblPlayhead.Left = trackManager.GetPlayheadPos() + HeaderWidth;
-      lblPlayhead.Visible = true;
-    }
-    else {
-      btnPlay.BackgroundImage = Resources.play;
-      lblPlayhead.Visible = false;
-    }
-    btnPlay.Visible = true;
-    btnPlay.Enabled = trackManager.Tracks.Count > 0;
-  }
-
-  private void trkDrawTimescale_Scroll(object sender, EventArgs e) {
-    // fixes drawsamples from letting it loop forever and freezing
-    trackManager.DrawTimescale = Math.Max(1, trkDrawTimescale.Maximum - trkDrawTimescale.Value);
-    trackManager.RedrawAll();
-  }
-
-  // Helper methods
-  private Panel CreateTrackPanel(Track track) {
-    Panel pan = new() {
-      BackColor = Settings.Color.TrackBg_Unselected,
-      Width = panTracks.Width,
-      Left = 0,
-      Top = 0,
-    };
-    pan.Click += (sender, e) => {
-      trackManager.SelectTrack(track);
-    };
-    pan.DoubleClick += (sender, e) => {
-      track.ToggleDisabled();
-      track.PanDrawSamples.Invalidate();
-      track.PanHeader?.Invalidate();
-    };
-    pan.MouseDown += (sender, e) => {
-      if (e.Button != MouseButtons.Left) return;
-      trackManager.SelectTrack(track);
-      dragTrack = track;
-      dragStart = Cursor.Position;
-      dragStartOffset = track.DrawOffset;
-      dragging = false;
-    };
-    pan.MouseMove += (sender, e) => {
-      if (dragTrack != track || e.Button != MouseButtons.Left) return;
-      Point cur = Cursor.Position;
-
-      if (!dragging) {
-        // ignore tiny wiggles so normal clicks and double-clicks still work
-        if (Math.Abs(cur.X - dragStart.X) < DRAG_THRESHOLD &&
-          Math.Abs(cur.Y - dragStart.Y) < DRAG_THRESHOLD) return;
-          dragging = true;
-          pan.Cursor = Cursors.SizeAll;
-      }
-      DragTrackTo(track, cur);
-    };
-    pan.MouseUp += (sender, e) => {
-      dragTrack = null;
-      dragging = false;
-      pan.Cursor = Cursors.Default;
-    };
-    pan.Paint += (sender, e) => {
-      track.DrawSamples(e.Graphics, trackManager.DrawTimescale);
-    };
-    panTracks.Controls.Add(pan);
-    track.LinkPanels(pan, panTracks);
-    CreateTrackHeader(track);
-    trackManager.SelectTrack(track);
-
-    return pan;
-  }
-
-  private void DragTrackTo(Track track, Point cursorScreen) {
-    int count = trackManager.Tracks.Count;
-    if (count == 0) return;
-
-    int stride = Math.Max(1, (panTracks.Height + DIVIDER_HEIGHT) / count);
-    int y = panTracks.PointToClient(cursorScreen).Y;
-    int newIndex = Math.Clamp(y / stride, 0, count - 1);
-    if (trackManager.MoveTrack(track, newIndex)) {
-      UpdateSizes();
-    }
-    track.DrawOffset = Math.Max(0, dragStartOffset + (cursorScreen.X - dragStart.X));
-    track.PanDrawSamples.Invalidate();
-  }
-
-  private void UpdateSizes() {
-    const int PADDING = 15;
-
-    panTracks.Left = PADDING;
-    panTracks.Width = ClientSize.Width - (PADDING * 2);
-    panTracks.Height = ClientSize.Height - panTracks.Top - PADDING - (lblDebug.Visible ? lblDebug.Height : 0);
-
-    // added gap for track divider
-    int count = trackManager.Tracks.Count;
-    int trackHeight = count > 0
-        ? Math.Max(1, (panTracks.Height - DIVIDER_HEIGHT * (count - 1)) / count)   // never below 1px
-        : 0;
-
-    int headerWidth = HeaderWidth;
-    int top = 0;
-    foreach (Track track in trackManager.Tracks)
+    private void btnPlay_Click(object sender, EventArgs e)
     {
-        // name column on the left, waveform to its right
-        if (track.PanHeader is not null) {
-            track.PanHeader.Left = 0;
-            track.PanHeader.Width = headerWidth;
-            track.PanHeader.Height = trackHeight;
-            track.PanHeader.Top = top;
-            track.PanHeader.Invalidate();
+        if (trackManager.State is NAudio.Wave.PlaybackState.Stopped or NAudio.Wave.PlaybackState.Paused)
+        {
+            trackManager.PlayAll();
+            btnPlay.BackgroundImage = Resources.pause;
         }
-        track.PanDrawSamples.Left = headerWidth;
-        track.PanDrawSamples.Width = Math.Max(1, panTracks.Width - headerWidth);
-        track.PanDrawSamples.Height = trackHeight;
-        track.PanDrawSamples.Top = top;
-        track.PanDrawSamples.Invalidate();
-        top += trackHeight + DIVIDER_HEIGHT;
+        else
+        {
+            trackManager.PauseAll();
+            btnPlay.BackgroundImage = Resources.play;
+        }
     }
-    LayoutTopBar();
-    lblPlayhead.Left = headerWidth;
-    lblPlayhead.Height = panTracks.Height;
-    lblPlayhead.BringToFront();
-  }
+
+    private void menuFileOpen_Click(object sender, EventArgs e)
+    {
+        ofdLoadFile.DefaultExt = "wav";
+        if (ofdLoadFile.ShowDialog() == DialogResult.OK)
+        {
+            Track newTrack = new(ofdLoadFile.FileName);
+            newTrack.Name = Path.GetFileNameWithoutExtension(ofdLoadFile.FileName);
+            CreateTrackPanel(newTrack);
+            trackManager.AddTrack(newTrack);
+            UpdateSizes();
+            newTrack.PanDrawSamples.Invalidate();
+        }
+    }
+    private void menuFileSave_Click(object sender, EventArgs e)
+    {
+        sfdSaveFile.DefaultExt = "wav";
+        if (sfdSaveFile.ShowDialog() == DialogResult.OK)
+        {
+            trackManager.SaveToFile(sfdSaveFile.FileName);
+        }
+    }
+    private void menuFileSettings_Click(object sender, EventArgs e)
+    {
+        FrmEditSettings frm = new();
+        frm.SetSound(trackManager.SelectedTrack);
+        if (frm.ShowDialog() == DialogResult.OK)
+        {
+            ApplySettings();
+        }
+    }
+
+    private void menuEditFlip_Click(object sender, EventArgs e)
+    {
+        trackManager.SelectedTrack?.Flip();
+    }
+    private void menuEditReverse_Click(object sender, EventArgs e)
+    {
+        trackManager.SelectedTrack?.Reverse();
+    }
+    private void menuEditVolume_Click(object sender, EventArgs e)
+    {
+        if (trackManager.SelectedTrack is not null)
+        {
+            FrmEditVolume frm = new();
+            frm.SetSound(trackManager.SelectedTrack);
+            frm.ShowDialog();
+        }
+    }
+    private void menuEditEliminateSilence_Click(object sender, EventArgs e)
+    {
+        if (trackManager.SelectedTrack is not null)
+        {
+            FrmEditEliminateSilence frm = new();
+            frm.SetSound(trackManager.SelectedTrack);
+            frm.ShowDialog();
+        }
+    }
+
+    private void menuGenRecord_Click(object sender, EventArgs e)
+    {
+        Track newTrack = new(new float[0]);
+        newTrack.Name = "Recording";
+        CreateTrackPanel(newTrack);
+        trackManager.AddTrack(newTrack);
+        UpdateSizes();
+        newTrack.PanDrawSamples.Invalidate();
+
+        FrmGenRecord frm = new();
+        frm.SetSound(trackManager.SelectedTrack);
+        if (frm.ShowDialog() == DialogResult.Cancel)
+        {
+            // fully remove the cancelled track including its on-screen panel
+            trackManager.RemTrack(newTrack);
+            panTracks.Controls.Remove(newTrack.PanDrawSamples);
+            newTrack.PanDrawSamples.Dispose();
+            RemoveHeader(newTrack);
+            newTrack.Dispose();
+            UpdateSizes();
+        }
+    }
+    private void menuGenNoise_Click(object sender, EventArgs e)
+    {
+        const int NUM_SAMPLES = 100_000;
+        float[] samples = new float[NUM_SAMPLES];
+        Random rand = new();
+        for (int i = 0; i < NUM_SAMPLES; i++)
+        {
+            samples[i] = rand.NextSingle() * 2.0f - 1.0f;
+        }
+        Track newTrack = new(samples);
+        newTrack.Name = "Noise";
+        CreateTrackPanel(newTrack);
+        trackManager.AddTrack(newTrack);
+        UpdateSizes();
+        newTrack.PanDrawSamples.Invalidate();
+    }
+    private void menuGenGradientNoise_Click(object sender, EventArgs e)
+    {
+        const int NUM_SAMPLES = 250_000;
+        float[] samples = new float[NUM_SAMPLES];
+        Random rand = new();
+        float cur = 0;
+        float inc = 0.005f;
+        int dir = +1;
+        for (int i = 0; i < NUM_SAMPLES; i++)
+        {
+            cur += (inc * dir);
+            if (rand.NextSingle() < 0.5f)
+            {
+                dir *= -1;
+            }
+            if (cur > 0.9f)
+            {
+                dir = -1;
+            }
+            if (cur < -0.9f)
+            {
+                dir = +1;
+            }
+            samples[i] = cur;
+        }
+        Track newTrack = new(samples);
+        newTrack.Name = "Gradient Noise";
+        CreateTrackPanel(newTrack);
+        trackManager.AddTrack(newTrack);
+        UpdateSizes();
+        newTrack.PanDrawSamples.Invalidate();
+    }
+
+    private void tmrUpdatePlaybackState_Tick(object sender, EventArgs e)
+    {
+        if (trackManager.Tracks.Count > 0)
+        {
+            btnPlay.BackgroundImage = trackManager.State == NAudio.Wave.PlaybackState.Playing ? Resources.pause : Resources.play;
+            btnPlay.Visible = true;
+            lblPlayhead.Left = trackManager.GetPlayheadPos() + HeaderWidth;
+            lblPlayhead.Visible = true;
+        }
+        else
+        {
+            btnPlay.BackgroundImage = Resources.play;
+            lblPlayhead.Visible = false;
+        }
+        btnPlay.Visible = true;
+        btnPlay.Enabled = trackManager.Tracks.Count > 0;
+    }
+
+    private void trkDrawTimescale_Scroll(object sender, EventArgs e)
+    {
+        // fixes drawsamples from letting it loop forever and freezing
+        trackManager.DrawTimescale = Math.Max(1, trkDrawTimescale.Maximum - trkDrawTimescale.Value);
+        trackManager.RedrawAll();
+    }
+
+    // Helper methods
+    private Panel CreateTrackPanel(Track track)
+    {
+        Panel pan = new()
+        {
+            BackColor = Settings.Color.TrackBg_Unselected,
+            Width = panTracks.Width,
+            Left = 0,
+            Top = 0,
+        };
+        pan.Click += (sender, e) =>
+        {
+            trackManager.SelectTrack(track);
+        };
+        pan.DoubleClick += (sender, e) =>
+        {
+            track.ToggleDisabled();
+            track.PanDrawSamples.Invalidate();
+            track.PanHeader?.Invalidate();
+        };
+        pan.MouseDown += (sender, e) =>
+        {
+            if (e.Button != MouseButtons.Left) return;
+            trackManager.SelectTrack(track);
+            dragTrack = track;
+            dragStart = Cursor.Position;
+            dragStartOffset = track.DrawOffset;
+            dragging = false;
+        };
+        pan.MouseMove += (sender, e) =>
+        {
+            if (dragTrack != track || e.Button != MouseButtons.Left) return;
+            Point cur = Cursor.Position;
+
+            if (!dragging)
+            {
+                // ignore tiny wiggles so normal clicks and double-clicks still work
+                if (Math.Abs(cur.X - dragStart.X) < DRAG_THRESHOLD &&
+                  Math.Abs(cur.Y - dragStart.Y) < DRAG_THRESHOLD) return;
+                dragging = true;
+                pan.Cursor = Cursors.SizeAll;
+            }
+            DragTrackTo(track, cur);
+        };
+        pan.MouseUp += (sender, e) =>
+        {
+            dragTrack = null;
+            dragging = false;
+            pan.Cursor = Cursors.Default;
+        };
+        pan.Paint += (sender, e) =>
+        {
+            track.DrawSamples(e.Graphics, trackManager.DrawTimescale);
+        };
+        panTracks.Controls.Add(pan);
+        track.LinkPanels(pan, panTracks);
+        CreateTrackHeader(track);
+        trackManager.SelectTrack(track);
+
+        return pan;
+    }
+
+    private void DragTrackTo(Track track, Point cursorScreen)
+    {
+        int count = trackManager.Tracks.Count;
+        if (count == 0) return;
+
+        int stride = Math.Max(1, (panTracks.Height + DIVIDER_HEIGHT) / count);
+        int y = panTracks.PointToClient(cursorScreen).Y;
+        int newIndex = Math.Clamp(y / stride, 0, count - 1);
+        if (trackManager.MoveTrack(track, newIndex))
+        {
+            UpdateSizes();
+        }
+        track.DrawOffset = Math.Max(0, dragStartOffset + (cursorScreen.X - dragStart.X));
+        track.PanDrawSamples.Invalidate();
+    }
+
+    private void UpdateSizes()
+    {
+        const int PADDING = 15;
+
+        panTracks.Left = PADDING;
+        panTracks.Width = ClientSize.Width - (PADDING * 2);
+        panTracks.Height = ClientSize.Height - panTracks.Top - PADDING - (lblDebug.Visible ? lblDebug.Height : 0);
+
+        // added gap for track divider
+        int count = trackManager.Tracks.Count;
+        int trackHeight = count > 0
+            ? Math.Max(1, (panTracks.Height - DIVIDER_HEIGHT * (count - 1)) / count)   // never below 1px
+            : 0;
+
+        int headerWidth = HeaderWidth;
+        int top = 0;
+        foreach (Track track in trackManager.Tracks)
+        {
+            // name column on the left, waveform to its right
+            if (track.PanHeader is not null)
+            {
+                track.PanHeader.Left = 0;
+                track.PanHeader.Width = headerWidth;
+                track.PanHeader.Height = trackHeight;
+                track.PanHeader.Top = top;
+                track.PanHeader.Invalidate();
+            }
+            track.PanDrawSamples.Left = headerWidth;
+            track.PanDrawSamples.Width = Math.Max(1, panTracks.Width - headerWidth);
+            track.PanDrawSamples.Height = trackHeight;
+            track.PanDrawSamples.Top = top;
+            track.PanDrawSamples.Invalidate();
+            top += trackHeight + DIVIDER_HEIGHT;
+        }
+        LayoutTopBar();
+        lblPlayhead.Left = headerWidth;
+        lblPlayhead.Height = panTracks.Height;
+        lblPlayhead.BringToFront();
+
+        btnAutoFit.Left = trkDrawTimescale.Right + PADDING;
+        btnAutoFit.Top = (trkDrawTimescale.Top + (trkDrawTimescale.Height - btnAutoFit.Height) / 2 ) + 20;
+    }
+
+    private void btnAutoFit_Click(object sender, EventArgs e)
+    {
+        if (trackManager == null || trackManager.Tracks.Count == 0) return;
+        
+        int maxSamples = trackManager.Tracks.Max(t => t.CloneSamples().Length);
+        if (maxSamples <= 0) return;
+
+        int availableWidth = trackManager.Tracks.First().PanDrawSamples.Width;
+        if (availableWidth <= 0) return;
+
+        int targetTimescale = Math.Max(1, maxSamples / availableWidth);
+
+        trackManager.DrawTimescale = targetTimescale;
+
+        int calculatedSliderValue = trkDrawTimescale.Maximum - targetTimescale;
+        trkDrawTimescale.Value = Math.Clamp(calculatedSliderValue, trkDrawTimescale.Minimum, trkDrawTimescale.Maximum);
+
+        trackManager.RedrawAll();
+    }
 }
