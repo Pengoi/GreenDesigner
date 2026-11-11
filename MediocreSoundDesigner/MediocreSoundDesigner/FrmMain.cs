@@ -392,14 +392,23 @@ public partial class FrmMain : Form
     private void btnAutoFit_Click(object sender, EventArgs e)
     {
         if (trackManager == null || trackManager.Tracks.Count == 0) return;
-        
-        int maxSamples = trackManager.Tracks.Max(t => t.CloneSamples().Length);
-        if (maxSamples <= 0) return;
 
-        int availableWidth = trackManager.Tracks.First().PanDrawSamples.Width;
+        int availableWidth = panTracks.Width - HeaderWidth;
         if (availableWidth <= 0) return;
 
-        int targetTimescale = Math.Max(1, maxSamples / availableWidth);
+        int currentTimescale = trackManager.DrawTimescale;
+
+        double maxSamplesEnd = trackManager.Tracks.Max(t => (t.DrawOffset * currentTimescale) + t.CloneSamples().Length);
+        if (maxSamplesEnd <= 0) return;
+
+        double targetTimescaleDouble = maxSamplesEnd / availableWidth;
+        int targetTimescale = Math.Max(1, (int)Math.Ceiling(targetTimescaleDouble));
+
+        foreach (Track track in trackManager.Tracks)
+        {
+            double samplePosition = track.DrawOffset * currentTimescale;
+            track.DrawOffset = (int)(samplePosition / targetTimescale);
+        }
 
         trackManager.DrawTimescale = targetTimescale;
 
