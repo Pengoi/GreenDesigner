@@ -22,7 +22,15 @@ public class TrackManager {
 		Tracks.Add(track);
 	}
 
-	public void RemTrack(Track track) {
+    public bool MoveTrack(Track track, int newIndex) {
+        int oldIndex = Tracks.IndexOf(track);
+        if (oldIndex < 0 || oldIndex == newIndex) return false;
+        Tracks.RemoveAt(oldIndex);
+        Tracks.Insert(newIndex, track);
+        return true;
+    }
+
+    public void RemTrack(Track track) {
 		Tracks.Remove(track);
     if (SelectedTrack == track) {
       // don't leave a removed track selected
@@ -85,6 +93,7 @@ public class TrackManager {
       if (track.IsDisabled) {
         continue;
       }
+      track.SetDrawTimescale(DrawTimescale);
       float[] trackSamples = (float[])track.GetAdjustedSamples().Clone();
       for (int i = 0; i < trackSamples.Length; i++) {
         if (combinedSamples.Count <= i) {
