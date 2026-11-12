@@ -93,7 +93,6 @@ public class TrackManager {
       if (track.IsDisabled) {
         continue;
       }
-      track.SetDrawTimescale(DrawTimescale);
       float[] trackSamples = (float[])track.GetAdjustedSamples().Clone();
       for (int i = 0; i < trackSamples.Length; i++) {
         if (combinedSamples.Count <= i) {

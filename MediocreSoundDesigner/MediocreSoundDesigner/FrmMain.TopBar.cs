@@ -24,6 +24,7 @@ public partial class FrmMain {
     Controls.Add(panTopBar);
     panTopBar.Controls.Add(btnPlay);
     panTopBar.Controls.Add(trkDrawTimescale);
+    panTopBar.Controls.Add(btnAutoFit);
   }
 
   private void ApplyTopBarSettings() {
@@ -59,6 +60,9 @@ public partial class FrmMain {
     trkDrawTimescale.Left = btnPlay.Right + pad;
     trkDrawTimescale.Width = Math.Min(LogicalToDeviceUnits(TIMESCALE_WIDTH), Math.Max(1, panTopBar.Width - trkDrawTimescale.Left - pad));
     trkDrawTimescale.Top = Math.Max(0, (panTopBar.Height - trkDrawTimescale.Height) / 2);
+
+    btnAutoFit.Left = trkDrawTimescale.Right + pad;
+    btnAutoFit.Top = Math.Max(0, (panTopBar.Height - btnAutoFit.Height) / 2);
   }
 
   // ---- track name column -----------------------------------------------------
@@ -76,6 +80,35 @@ public partial class FrmMain {
       track.ToggleDisabled();
       track.PanDrawSamples.Invalidate();
       header.Invalidate();
+    };
+    // drag the name column up/down to reorder lanes
+    header.MouseDown += (sender, e) => {
+      if (e.Button != MouseButtons.Left) {
+        return;
+      }
+      dragTrack = track;
+      dragStart = Cursor.Position;
+      dragging = false;
+    };
+    header.MouseMove += (sender, e) => {
+      if (dragTrack != track || e.Button != MouseButtons.Left) {
+        return;
+      }
+      Point cur = Cursor.Position;
+      if (!dragging) {
+        // ignore tiny wiggles so plain clicks (select / mute dot) still work
+        if (Math.Abs(cur.Y - dragStart.Y) < DRAG_THRESHOLD) {
+          return;
+        }
+        dragging = true;
+        header.Cursor = Cursors.SizeNS;
+      }
+      DragTrackTo(track, cur);
+    };
+    header.MouseUp += (sender, e) => {
+      dragTrack = null;
+      dragging = false;
+      header.Cursor = Cursors.Default;
     };
     panTracks.Controls.Add(header);
     track.LinkHeader(header);
