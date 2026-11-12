@@ -170,7 +170,7 @@ public class Track : IDisposable {
   public void Play() {
     if (samples.Length == 0) {
       return;   // nothing to play 
-
+    }
     outputDevice?.Dispose();
     fileReader?.Dispose();
     SaveToTempFile();
