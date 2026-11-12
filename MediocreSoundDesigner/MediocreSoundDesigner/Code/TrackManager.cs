@@ -40,6 +40,11 @@ public class TrackManager {
       track.PanDrawSamples.BackColor = Settings.Color.TrackBg_Unselected;
       track.PanHeader?.Invalidate();
     });
+    foreach (Track other in Tracks) {
+      if (other != track) {
+        other.SelectedClip = null;   // only the selected lane keeps a selected clip
+      }
+    }
     track.PanDrawSamples.BorderStyle = BorderStyle.Fixed3D;
     track.PanDrawSamples.BackColor = Settings.Color.TrackBg_Selected;
     track.PanHeader?.Invalidate();

@@ -26,6 +26,12 @@ public static class Settings {
     public Color MuteDot_Off { get; set; }
     public Color TopBar_Bg { get; set; }
     public Color TopBar_Border { get; set; }
+    public Color Clip_Fill { get; set; }
+    public Color Clip_Fill_Disabled { get; set; }
+    public Color Clip_Border { get; set; }
+    public Color Clip_Border_Selected { get; set; }
+    public Color Grid_Line { get; set; }
+    public Color Grid_Bar { get; set; }
 
     public Colors() {
       WinBg = System.Drawing.Color.Black;
@@ -43,6 +49,12 @@ public static class Settings {
       MuteDot_Off = System.Drawing.Color.FromArgb(95, 100, 106);
       TopBar_Bg = System.Drawing.Color.FromArgb(40, 46, 54);
       TopBar_Border = System.Drawing.Color.FromArgb(74, 84, 96);
+      Clip_Fill = System.Drawing.Color.FromArgb(48, 92, 112);
+      Clip_Fill_Disabled = System.Drawing.Color.FromArgb(84, 84, 84);
+      Clip_Border = System.Drawing.Color.FromArgb(110, 190, 215);
+      Clip_Border_Selected = System.Drawing.Color.FromArgb(255, 214, 102);
+      Grid_Line = System.Drawing.Color.FromArgb(88, 88, 88);
+      Grid_Bar = System.Drawing.Color.FromArgb(62, 62, 62);
     }
   }
 

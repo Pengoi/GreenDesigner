@@ -39,16 +39,22 @@ public partial class FrmMain : Form {
   protected override bool ProcessCmdKey(ref Message msg, Keys keyData) {
     if (trackManager.SelectedTrack is not null) {
       if (keyData == Keys.Left) {
-        trackManager.SelectedTrack.ShiftSampleOver(-5);
+        trackManager.SelectedTrack.NudgeSelectedClip(-1);
         trackManager.SelectedTrack.PanDrawSamples.Invalidate();
         return true;
       }
       else if (keyData == Keys.Right) {
-        trackManager.SelectedTrack.ShiftSampleOver(+5);
+        trackManager.SelectedTrack.NudgeSelectedClip(+1);
         trackManager.SelectedTrack.PanDrawSamples.Invalidate();
         return true;
       }
       else if (keyData == Keys.Delete) {
+        if (trackManager.SelectedTrack.SelectedClip is not null) {
+          // a clip is selected: remove just that clip, not the whole lane
+          trackManager.SelectedTrack.RemoveClip(trackManager.SelectedTrack.SelectedClip);
+          trackManager.SelectedTrack.PanDrawSamples.Invalidate();
+          return true;
+        }
         if (trackManager.SelectedTrack is not null) {
           if (MessageBox.Show("This will delete the selected track. This is NOT undoable!", "Are You Sure?", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Exclamation) == DialogResult.Yes) {
             panTracks.Controls.Remove(trackManager.SelectedTrack.PanDrawSamples);
@@ -214,20 +220,13 @@ public partial class FrmMain : Form {
 
   // Helper methods
   private Panel CreateTrackPanel(Track track) {
-    Panel pan = new() {
+    Panel pan = new BufferedPanel() {
       BackColor = Settings.Color.TrackBg_Unselected,
       Width = panTracks.Width,
       Left = 0,
       Top = 0,
     };
-    pan.Click += (sender, e) => {
-      trackManager.SelectTrack(track);
-    };
-    pan.DoubleClick += (sender, e) => {
-      track.ToggleDisabled();
-      track.PanDrawSamples.Invalidate();
-      track.PanHeader?.Invalidate();
-    };
+    AttachClipMouse(pan, track);   // click to add a clip, drag to move / trim, right-click to remove
     pan.Paint += (sender, e) => {
       track.DrawSamples(e.Graphics, trackManager.DrawTimescale);
     };
