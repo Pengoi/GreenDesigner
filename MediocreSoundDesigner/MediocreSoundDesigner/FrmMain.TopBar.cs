@@ -3,10 +3,12 @@ namespace MediocreSoundDesigner;
 // Layout for the top bar and the track name column.
 public partial class FrmMain {
   private Panel panTopBar;
+  private Panel panTimeline;
   private int nextTrackNumber = 1;
 
   private const int HEADER_WIDTH = 150;   // track name column
   private const int TIMESCALE_WIDTH = 320; // zoom slider
+  private const int TIMELINE_HEIGHT = 32;
 
   private int HeaderWidth => LogicalToDeviceUnits(HEADER_WIDTH);
 
@@ -25,6 +27,10 @@ public partial class FrmMain {
     panTopBar.Controls.Add(btnPlay);
     panTopBar.Controls.Add(trkDrawTimescale);
     panTopBar.Controls.Add(btnAutoFit);
+
+    panTimeline = new BufferedPanel { Name = "panTimeline" };
+    panTimeline.Paint += panTimeline_Paint;
+    panTracks.Controls.Add(panTimeline);
   }
 
   private void ApplyTopBarSettings() {
@@ -32,13 +38,42 @@ public partial class FrmMain {
       return;
     }
     panTopBar.BackColor = Settings.Color.TopBar_Bg;
+    panTimeline.BackColor = Settings.Color.TopBar_Bg;
     trkDrawTimescale.BackColor = Settings.Color.TopBar_Bg;
     panTopBar.Invalidate();
+    panTimeline.Invalidate();
   }
 
   private void panTopBar_Paint(object sender, PaintEventArgs e) {
     using Pen border = new(Settings.Color.TopBar_Border);
     e.Graphics.DrawRectangle(border, 0, 0, panTopBar.Width - 1, panTopBar.Height - 1);
+  }
+
+  private void panTimeline_Paint(object sender, PaintEventArgs e) {
+    int headerWidth = HeaderWidth;
+    int viewportWidth = Math.Max(1, panTimeline.Width - headerWidth);
+    int pixelsPerSecond = Math.Max(1, Track.TimelineRate / Math.Max(1, trackManager.DrawTimescale));
+    int firstSecond = Math.Max(0, trackManager.ScrollPixels / pixelsPerSecond);
+    int lastSecond = firstSecond + (viewportWidth / pixelsPerSecond) + 2;
+
+    e.Graphics.SetClip(new Rectangle(headerWidth, 0, viewportWidth, panTimeline.Height));
+    e.Graphics.TranslateTransform(headerWidth - trackManager.ScrollPixels, 0);
+
+    using Pen tickPen = new(Color.FromArgb(110, Color.Gray));
+    using Pen majorPen = new(Color.FromArgb(180, Color.Gray));
+    using Brush textBrush = new SolidBrush(Settings.Color.TrackHeader_Text);
+    using Font font = new(Font.FontFamily, 8.0f, FontStyle.Regular, GraphicsUnit.Point);
+
+    for (int second = firstSecond; second <= lastSecond; second++) {
+      int x = second * pixelsPerSecond;
+      e.Graphics.DrawLine(second == 0 ? majorPen : tickPen, x, 0, x, panTimeline.Height - 1);
+      e.Graphics.DrawString(second.ToString(), font, textBrush, x + 4, 4);
+    }
+
+    using Pen borderPen = new(Settings.Color.TopBar_Border);
+    e.Graphics.ResetTransform();
+    e.Graphics.DrawLine(borderPen, 0, panTimeline.Height - 1, panTimeline.Width, panTimeline.Height - 1);
+    e.Graphics.DrawLine(borderPen, headerWidth - 1, 0, headerWidth - 1, panTimeline.Height);
   }
 
   private void LayoutTopBar() {
@@ -53,6 +88,12 @@ public partial class FrmMain {
     panTopBar.Width = panTracks.Width;
     panTopBar.Top = menu.Bottom;
     panTopBar.Height = Math.Max(1, panTracks.Top - menu.Bottom - gap);
+
+    panTimeline.Left = 0;
+    panTimeline.Top = 0;
+    panTimeline.Width = panTracks.Width;
+    panTimeline.Height = LogicalToDeviceUnits(TIMELINE_HEIGHT);
+    panTimeline.Invalidate();
 
     btnPlay.Left = pad;
     btnPlay.Top = Math.Max(0, (panTopBar.Height - btnPlay.Height) / 2);

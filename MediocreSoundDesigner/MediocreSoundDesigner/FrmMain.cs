@@ -35,6 +35,7 @@ public partial class FrmMain : Form
         hScroll.ValueChanged += (s, e) =>
         {
             trackManager.ScrollPixels = hScroll.Value;
+            panTimeline.Invalidate();
             trackManager.RedrawAll();
         };
         Controls.Add(hScroll);
@@ -273,6 +274,7 @@ public partial class FrmMain : Form
     {
         trackManager.DrawTimescale = Math.Max(1, trkDrawTimescale.Maximum - trkDrawTimescale.Value);
         UpdateScrollRange();
+        panTimeline.Invalidate();
         trackManager.RedrawAll();
     }
 
@@ -306,7 +308,7 @@ public partial class FrmMain : Form
         if (count == 0) return;
 
         int stride = Math.Max(1, (panTracks.Height + DIVIDER_HEIGHT) / count);
-        int y = panTracks.PointToClient(cursorScreen).Y;
+        int y = panTracks.PointToClient(cursorScreen).Y - LogicalToDeviceUnits(TIMELINE_HEIGHT);
         int newIndex = Math.Clamp(y / stride, 0, count - 1);
         if (trackManager.MoveTrack(track, newIndex))
         {
@@ -325,12 +327,13 @@ public partial class FrmMain : Form
 
         // added gap for track divider
         int count = trackManager.Tracks.Count;
+        int timelineHeight = LogicalToDeviceUnits(TIMELINE_HEIGHT);
         int trackHeight = count > 0
-            ? Math.Max(1, (panTracks.Height - DIVIDER_HEIGHT * (count - 1)) / count)   // never below 1px
+            ? Math.Max(1, (panTracks.Height - timelineHeight - DIVIDER_HEIGHT * (count - 1)) / count)   // never below 1px
             : 0;
 
         int headerWidth = HeaderWidth;
-        int top = 0;
+        int top = timelineHeight;
         foreach (Track track in trackManager.Tracks)
         {
             // name column on the left, waveform to its right
@@ -355,7 +358,8 @@ public partial class FrmMain : Form
         hScroll.Top = panTracks.Bottom;
         UpdateScrollRange();
         lblPlayhead.Left = headerWidth;
-        lblPlayhead.Height = panTracks.Height;
+        lblPlayhead.Top = timelineHeight;
+        lblPlayhead.Height = Math.Max(1, panTracks.Height - timelineHeight);
         lblPlayhead.BringToFront();
     }
 
