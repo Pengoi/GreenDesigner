@@ -31,6 +31,8 @@ public partial class FrmMain {
     panTimeline = new BufferedPanel { Name = "panTimeline" };
     panTimeline.Paint += panTimeline_Paint;
     panTracks.Controls.Add(panTimeline);
+
+    BuildInstruments();
   }
 
   private void ApplyTopBarSettings() {
@@ -40,6 +42,7 @@ public partial class FrmMain {
     panTopBar.BackColor = Settings.Color.TopBar_Bg;
     panTimeline.BackColor = Settings.Color.TopBar_Bg;
     trkDrawTimescale.BackColor = Settings.Color.TopBar_Bg;
+    ApplyInstrumentSettings();
     panTopBar.Invalidate();
     panTimeline.Invalidate();
   }
@@ -104,6 +107,8 @@ public partial class FrmMain {
 
     btnAutoFit.Left = trkDrawTimescale.Right + pad;
     btnAutoFit.Top = Math.Max(0, (panTopBar.Height - btnAutoFit.Height) / 2);
+
+    LayoutInstruments(btnAutoFit.Right + pad);
   }
 
   // ---- track name column -----------------------------------------------------
