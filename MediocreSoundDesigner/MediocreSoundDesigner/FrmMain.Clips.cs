@@ -13,66 +13,68 @@ public partial class FrmMain {
   }
 
   private void AttachClipMouse(Panel pan, Track track) {
-    ClipDrag mode = ClipDrag.None;
-    Clip dragClip = null;
-    int grabOffset = 0;   // how far into the clip (in samples) the mouse grabbed it
+      ClipDrag mode = ClipDrag.None;
+      Clip dragClip = null;
+      int grabOffset = 0;   // how far into the clip (in samples) the mouse grabbed it
 
-    pan.MouseDown += (sender, e) => {
-      trackManager.SelectTrack(track);
-      int timescale = trackManager.DrawTimescale;
-      int mouseSample = e.X * timescale;
-      Clip hit = track.FindClipAt(e.X, timescale, LogicalToDeviceUnits(6), out bool onRightEdge);
+      pan.MouseDown += (sender, e) => {
+        trackManager.SelectTrack(track);
+        int timescale = trackManager.DrawTimescale;
+        int x = e.X + trackManager.ScrollPixels;   // mouse position on the timeline, not on screen
+        int mouseSample = x * timescale;
+        Clip hit = track.FindClipAt(x, timescale, LogicalToDeviceUnits(6), out bool onRightEdge);
 
-      if (e.Button == MouseButtons.Right) {
-        if (hit is not null) {
-          track.RemoveClip(hit);
+        if (e.Button == MouseButtons.Right) {
+          if (hit is not null) {
+            track.RemoveClip(hit);
+            pan.Invalidate();
+          }
+          return;
+        }
+        if (e.Button != MouseButtons.Left) {
+          return;
+        }
+
+        if (hit is null) {
+          // empty space: drop another copy of the sound here
+          track.SelectedClip = track.AddClipAt(Track.SnapToGrid(mouseSample));
+          pan.Invalidate();
+          return;
+        }
+
+        track.SelectedClip = hit;
+        dragClip = hit;
+        if (onRightEdge) {
+          mode = ClipDrag.Resize;
+        }
+        else {
+          mode = ClipDrag.Move;
+          grabOffset = mouseSample - hit.StartSample;
+        }
+        pan.Invalidate();
+      };
+
+      pan.MouseMove += (sender, e) => {
+        int timescale = trackManager.DrawTimescale;
+        int x = e.X + trackManager.ScrollPixels;   // mouse position on the timeline, not on screen
+        if (mode == ClipDrag.Move && dragClip is not null) {
+          dragClip.StartSample = Math.Max(0, Track.SnapToGrid(x * timescale - grabOffset));
           pan.Invalidate();
         }
-        return;
-      }
-      if (e.Button != MouseButtons.Left) {
-        return;
-      }
+        else if (mode == ClipDrag.Resize && dragClip is not null) {
+          track.ResizeClip(dragClip, Track.SnapToGrid(x * timescale - dragClip.StartSample));
+          pan.Invalidate();
+        }
+        else {
+          // just hovering: show a resize cursor over a clip's right edge
+          track.FindClipAt(x, timescale, LogicalToDeviceUnits(6), out bool overEdge);
+          pan.Cursor = overEdge ? Cursors.SizeWE : Cursors.Default;
+        }
+      };
 
-      if (hit is null) {
-        // empty space: drop another copy of the sound here
-        track.SelectedClip = track.AddClipAt(Track.SnapToGrid(mouseSample));
-        pan.Invalidate();
-        return;
-      }
-
-      track.SelectedClip = hit;
-      dragClip = hit;
-      if (onRightEdge) {
-        mode = ClipDrag.Resize;
-      }
-      else {
-        mode = ClipDrag.Move;
-        grabOffset = mouseSample - hit.StartSample;
-      }
-      pan.Invalidate();
-    };
-
-    pan.MouseMove += (sender, e) => {
-      int timescale = trackManager.DrawTimescale;
-      if (mode == ClipDrag.Move && dragClip is not null) {
-        dragClip.StartSample = Math.Max(0, Track.SnapToGrid(e.X * timescale - grabOffset));
-        pan.Invalidate();
-      }
-      else if (mode == ClipDrag.Resize && dragClip is not null) {
-        track.ResizeClip(dragClip, Track.SnapToGrid(e.X * timescale - dragClip.StartSample));
-        pan.Invalidate();
-      }
-      else {
-        // just hovering: show a resize cursor over a clip's right edge
-        track.FindClipAt(e.X, timescale, LogicalToDeviceUnits(6), out bool overEdge);
-        pan.Cursor = overEdge ? Cursors.SizeWE : Cursors.Default;
-      }
-    };
-
-    pan.MouseUp += (sender, e) => {
-      mode = ClipDrag.None;
-      dragClip = null;
-    };
+      pan.MouseUp += (sender, e) => {
+        mode = ClipDrag.None;
+        dragClip = null;
+      };
   }
 }

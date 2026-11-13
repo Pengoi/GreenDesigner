@@ -9,6 +9,7 @@ public class TrackManager {
   public List<Track> Tracks { get; private set; }
 	public Track SelectedTrack { get; private set; }
   public int DrawTimescale { get; set; }
+  public int ScrollPixels { get; set; }
   public PlaybackState State => pseudoCombinedTrack?.State ?? PlaybackState.Stopped;
 
   public TrackManager(Panel panContainer) {

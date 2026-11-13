@@ -8,6 +8,7 @@ public partial class FrmMain : Form
     // fields
     private TrackManager trackManager;
     private const int DIVIDER_HEIGHT = 3;
+    private HScrollBar hScroll;
 
     // drag state
     private Track dragTrack;
@@ -30,6 +31,13 @@ public partial class FrmMain : Form
         trackManager = new(panTracks);
         panTracks.AutoScroll = false;
         BuildTopBar();
+        hScroll = new HScrollBar();
+        hScroll.ValueChanged += (s, e) =>
+        {
+            trackManager.ScrollPixels = hScroll.Value;
+            trackManager.RedrawAll();
+        };
+        Controls.Add(hScroll);
         btnPlay.BackgroundImage = Resources.play;
         trackManager.DrawTimescale = trkDrawTimescale.Value;
         UpdateSizes();
@@ -241,12 +249,16 @@ public partial class FrmMain : Form
 
     private void tmrUpdatePlaybackState_Tick(object sender, EventArgs e)
     {
+        UpdateScrollRange();
+
         if (trackManager.Tracks.Count > 0)
         {
             btnPlay.BackgroundImage = trackManager.State == NAudio.Wave.PlaybackState.Playing ? Resources.pause : Resources.play;
             btnPlay.Visible = true;
-            lblPlayhead.Left = trackManager.GetPlayheadPos() + HeaderWidth;
-            lblPlayhead.Visible = true;
+
+            int x = trackManager.GetPlayheadPos() + HeaderWidth - trackManager.ScrollPixels;
+            lblPlayhead.Left = x;
+            lblPlayhead.Visible = x >= HeaderWidth && x <= panTracks.Width;   // hide it when scrolled out of view
         }
         else
         {
@@ -259,8 +271,8 @@ public partial class FrmMain : Form
 
     private void trkDrawTimescale_Scroll(object sender, EventArgs e)
     {
-        // never below 1, or drawing loops forever and freezes
         trackManager.DrawTimescale = Math.Max(1, trkDrawTimescale.Maximum - trkDrawTimescale.Value);
+        UpdateScrollRange();
         trackManager.RedrawAll();
     }
 
@@ -277,7 +289,8 @@ public partial class FrmMain : Form
         AttachClipMouse(pan, track);   // click empty space to add a clip, drag to move / trim, right-click to remove
         pan.Paint += (sender, e) =>
         {
-            track.DrawSamples(e.Graphics, trackManager.DrawTimescale);
+            e.Graphics.TranslateTransform(-trackManager.ScrollPixels, 0);
+            track.DrawSamples(e.Graphics, trackManager.DrawTimescale, trackManager.ScrollPixels);
         };
         panTracks.Controls.Add(pan);
         track.LinkPanels(pan, panTracks);
@@ -308,7 +321,7 @@ public partial class FrmMain : Form
 
         panTracks.Left = PADDING;
         panTracks.Width = ClientSize.Width - (PADDING * 2);
-        panTracks.Height = ClientSize.Height - panTracks.Top - PADDING - (lblDebug.Visible ? lblDebug.Height : 0);
+        panTracks.Height = ClientSize.Height - panTracks.Top - PADDING - hScroll.Height - (lblDebug.Visible ? lblDebug.Height : 0);
 
         // added gap for track divider
         int count = trackManager.Tracks.Count;
@@ -337,9 +350,45 @@ public partial class FrmMain : Form
             top += trackHeight + DIVIDER_HEIGHT;
         }
         LayoutTopBar();
+        hScroll.Left = panTracks.Left + headerWidth;
+        hScroll.Width = Math.Max(1, panTracks.Width - headerWidth);
+        hScroll.Top = panTracks.Bottom;
+        UpdateScrollRange();
         lblPlayhead.Left = headerWidth;
         lblPlayhead.Height = panTracks.Height;
         lblPlayhead.BringToFront();
+    }
+
+    private void UpdateScrollRange()
+    {
+        if (hScroll is null || trackManager is null) return;
+
+        int visible = Math.Max(1, panTracks.Width - HeaderWidth);
+
+        // furthest point reached by any clip (same math as btnAutoFit_Click)
+        double endSamples = 0;
+        foreach (Track track in trackManager.Tracks)
+        {
+            foreach (Clip clip in track.Clips)
+            {
+                endSamples = Math.Max(endSamples, clip.StartSample + track.EffectiveLength(clip));
+            }
+        }
+
+        int endPx = (int)Math.Ceiling(endSamples / Math.Max(1, trackManager.DrawTimescale));
+        int total = endPx + visible / 2;           // extra room past the last clip so you can place new ones
+        bool needed = total > visible;
+        int maxValue = needed ? total - visible : 0;
+
+        hScroll.Enabled = needed;
+        hScroll.Minimum = 0;
+        hScroll.Maximum = Math.Max(total, visible) - 1;   // WinForms: largest Value = Maximum - LargeChange + 1
+        hScroll.LargeChange = visible;
+        hScroll.SmallChange = Math.Max(1, visible / 10);
+
+        int v = Math.Clamp(trackManager.ScrollPixels, 0, maxValue);
+        if (hScroll.Value != v) hScroll.Value = v;
+        trackManager.ScrollPixels = v;
     }
 
     private void btnAutoFit_Click(object sender, EventArgs e)
@@ -366,6 +415,8 @@ public partial class FrmMain : Form
         int calculatedSliderValue = trkDrawTimescale.Maximum - targetTimescale;
         trkDrawTimescale.Value = Math.Clamp(calculatedSliderValue, trkDrawTimescale.Minimum, trkDrawTimescale.Maximum);
 
+        trackManager.ScrollPixels = 0;   // fitted view always starts at the beginning
+        UpdateScrollRange();
         trackManager.RedrawAll();
     }
 }

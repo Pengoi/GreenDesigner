@@ -284,46 +284,51 @@ public class Track : IDisposable {
   }
 
   // render
-  public void DrawSamples(Graphics g, int drawTimescale) {
-    if (PanDrawSamples is null) {
-      return;
-    }
-    int width = PanDrawSamples.ClientSize.Width;
-    int height = PanDrawSamples.ClientSize.Height;
-    if (width <= 0 || height <= 0) {
-      return;
-    }
-    DrawGrid(g, drawTimescale, width, height);
-    foreach (Clip clip in Clips) {
-      DrawClip(g, clip, drawTimescale, width, height);
-    }
+  public void DrawSamples(Graphics g, int drawTimescale, int scrollPixels = 0) {
+      if (PanDrawSamples is null) {
+        return;
+      }
+      int width = PanDrawSamples.ClientSize.Width;
+      int height = PanDrawSamples.ClientSize.Height;
+      if (width <= 0 || height <= 0) {
+        return;
+      }
+      // the part of the timeline currently on screen, in timeline pixels
+      int viewLeft = scrollPixels;
+      int viewRight = scrollPixels + width;
+
+      DrawGrid(g, drawTimescale, viewLeft, viewRight, height);
+      foreach (Clip clip in Clips) {
+        DrawClip(g, clip, drawTimescale, viewLeft, viewRight, height);
+      }
   }
   // vertical grid lines every quarter second, stronger on each whole second
-  private void DrawGrid(Graphics g, int drawTimescale, int width, int height) {
-    float stepPx = (float)GridSamples / drawTimescale;
-    if (stepPx < 4) {
-      return;   // too tightly packed to be useful
+  private void DrawGrid(Graphics g, int drawTimescale, int viewLeft, int viewRight, int height) {
+      float stepPx = (float)GridSamples / drawTimescale;
+      if (stepPx < 4) {
+        return;   // too tightly packed to be useful
+      }
+      using Pen fine = new(Settings.Color.Grid_Line);
+      using Pen bar = new(Settings.Color.Grid_Bar);
+      int firstN = (int)(viewLeft / stepPx);   // skip the lines scrolled off to the left
+      for (int n = firstN; n * stepPx < viewRight; n++) {
+        float x = n * stepPx;
+        g.DrawLine(n % GridStepsPerSecond == 0 ? bar : fine, x, 0, x, height);
+      }
     }
-    using Pen fine = new(Settings.Color.Grid_Line);
-    using Pen bar = new(Settings.Color.Grid_Bar);
-    for (int n = 0; n * stepPx < width; n++) {
-      float x = n * stepPx;
-      g.DrawLine(n % GridStepsPerSecond == 0 ? bar : fine, x, 0, x, height);
-    }
-  }
-  private void DrawClip(Graphics g, Clip clip, int drawTimescale, int width, int height) {
+  private void DrawClip(Graphics g, Clip clip, int drawTimescale, int viewLeft, int viewRight, int height) {
     int length = EffectiveLength(clip);
-    if (length <= 0) {
-      return;
-    }
-    int x0 = clip.StartSample / drawTimescale;              // left edge in pixels
-    int x1 = (clip.StartSample + length) / drawTimescale;   // right edge in pixels
-    int visLeft = Math.Max(0, x0);
-    int visRight = Math.Min(width, x1);
-    if (visRight <= visLeft) {
-      return;
-    }
-    bool selected = clip == SelectedClip;
+      if (length <= 0) {
+        return;
+      }
+      int x0 = clip.StartSample / drawTimescale;              // left edge in pixels
+      int x1 = (clip.StartSample + length) / drawTimescale;   // right edge in pixels
+      int visLeft = Math.Max(viewLeft, x0);
+      int visRight = Math.Min(viewRight, x1);
+      if (visRight <= visLeft) {
+        return;
+      }
+      bool selected = clip == SelectedClip;
 
     using (SolidBrush fill = new(IsDisabled ? Settings.Color.Clip_Fill_Disabled : Settings.Color.Clip_Fill)) {
       g.FillRectangle(fill, visLeft, 0, visRight - visLeft, height);
@@ -350,16 +355,16 @@ public class Track : IDisposable {
       }
     }
 
-    // outline; the right edge is the handle for trimming
-    using Pen border = new(selected ? Settings.Color.Clip_Border_Selected : Settings.Color.Clip_Border);
-    g.DrawLine(border, visLeft, 0, visRight - 1, 0);
-    g.DrawLine(border, visLeft, height - 1, visRight - 1, height - 1);
-    if (x0 >= 0) {
-      g.DrawLine(border, x0, 0, x0, height);
-    }
-    if (x1 <= width) {
-      g.DrawLine(border, x1 - 1, 0, x1 - 1, height);
-    }
+      // outline; the right edge is the handle for trimming
+      using Pen border = new(selected ? Settings.Color.Clip_Border_Selected : Settings.Color.Clip_Border);
+      g.DrawLine(border, visLeft, 0, visRight - 1, 0);
+      g.DrawLine(border, visLeft, height - 1, visRight - 1, height - 1);
+      if (x0 >= viewLeft) {
+        g.DrawLine(border, x0, 0, x0, height);
+      }
+      if (x1 <= viewRight) {
+        g.DrawLine(border, x1 - 1, 0, x1 - 1, height);
+      }
   }
 
   // dispose
