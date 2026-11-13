@@ -63,13 +63,13 @@ public partial class FrmMain {
   }
 
   // left = where the palette starts inside the top bar
-  private void LayoutInstruments(int left) {
+  private void LayoutInstruments(int left, int right) {
     if (panInstruments is null) {
       return;
     }
     int pad = LogicalToDeviceUnits(14);
     int gap = LogicalToDeviceUnits(8);
-    int width = panTopBar.Width - left - pad;
+    int width = right - left - pad;
     if (width < LogicalToDeviceUnits(INSTRUMENT_MIN_WIDTH)) {
       panInstruments.Visible = false;
       return;

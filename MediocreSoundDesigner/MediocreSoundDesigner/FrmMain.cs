@@ -251,6 +251,7 @@ public partial class FrmMain : Form
     private void tmrUpdatePlaybackState_Tick(object sender, EventArgs e)
     {
         UpdateScrollRange();
+        UpdateTimerDisplay();
 
         if (trackManager.Tracks.Count > 0)
         {
@@ -268,6 +269,19 @@ public partial class FrmMain : Form
         }
         btnPlay.Visible = true;
         btnPlay.Enabled = trackManager.Tracks.Count > 0;
+    }
+
+    private void UpdateTimerDisplay()
+    {
+        if (trackManager.Tracks.Count == 0)
+        {
+            lblTimer.Text = "00:00:000";
+            return;
+        }
+
+        double elapsedSeconds = (double)trackManager.GetPlayheadPos() * trackManager.DrawTimescale / Track.TimelineRate;
+        TimeSpan elapsed = TimeSpan.FromSeconds(Math.Max(0, elapsedSeconds));
+        lblTimer.Text = $"{(int)elapsed.TotalMinutes:00}:{elapsed.Seconds:00}:{elapsed.Milliseconds:000}";
     }
 
     private void trkDrawTimescale_Scroll(object sender, EventArgs e)

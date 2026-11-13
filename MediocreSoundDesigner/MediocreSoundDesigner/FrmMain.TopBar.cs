@@ -4,6 +4,7 @@ namespace MediocreSoundDesigner;
 public partial class FrmMain {
   private Panel panTopBar;
   private Panel panTimeline;
+  private Label lblTimer;
   private int nextTrackNumber = 1;
 
   private const int HEADER_WIDTH = 150;   // track name column
@@ -28,6 +29,15 @@ public partial class FrmMain {
     panTopBar.Controls.Add(trkDrawTimescale);
     panTopBar.Controls.Add(btnAutoFit);
 
+    lblTimer = new Label {
+      Name = "lblTimer",
+      Text = "00:00:000",
+      TextAlign = ContentAlignment.MiddleCenter,
+      BorderStyle = BorderStyle.FixedSingle,
+      Font = new Font(Font.FontFamily, 14.0f, FontStyle.Bold),
+    };
+    panTopBar.Controls.Add(lblTimer);
+
     panTimeline = new BufferedPanel { Name = "panTimeline" };
     panTimeline.Paint += panTimeline_Paint;
     panTracks.Controls.Add(panTimeline);
@@ -42,6 +52,8 @@ public partial class FrmMain {
     panTopBar.BackColor = Settings.Color.TopBar_Bg;
     panTimeline.BackColor = Settings.Color.TopBar_Bg;
     trkDrawTimescale.BackColor = Settings.Color.TopBar_Bg;
+    lblTimer.BackColor = Settings.Color.TopBar_Bg;
+    lblTimer.ForeColor = Settings.Color.TrackHeader_Text;
     ApplyInstrumentSettings();
     panTopBar.Invalidate();
     panTimeline.Invalidate();
@@ -108,7 +120,15 @@ public partial class FrmMain {
     btnAutoFit.Left = trkDrawTimescale.Right + pad;
     btnAutoFit.Top = Math.Max(0, (panTopBar.Height - btnAutoFit.Height) / 2);
 
-    LayoutInstruments(btnAutoFit.Right + pad);
+    int timerWidth = LogicalToDeviceUnits(150);
+    int timerHeight = LogicalToDeviceUnits(48);
+    lblTimer.SetBounds(
+      HeaderWidth,
+      Math.Max(0, Math.Min(panTopBar.Height - timerHeight, trkDrawTimescale.Bottom + gap)),
+      timerWidth,
+      timerHeight);
+
+    LayoutInstruments(btnAutoFit.Right + pad, panTopBar.Width);
   }
 
   // ---- track name column -----------------------------------------------------
